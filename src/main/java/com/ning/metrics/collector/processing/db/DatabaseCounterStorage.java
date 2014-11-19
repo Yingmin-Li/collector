@@ -350,8 +350,6 @@ public class DatabaseCounterStorage implements CounterStorage {
 
             batch.execute();
 
-            log.info("deleted %d by id", count);
-
             // Now delete any from the given namespace that have a null id
             StringBuilder queryStr = new StringBuilder();
             queryStr.append("delete from metrics_buffer where "
@@ -361,8 +359,6 @@ public class DatabaseCounterStorage implements CounterStorage {
                             .bind("namespace", namespace);
 
             count += query.execute();
-
-            log.info("deleted %d in total", count);
 
             return count;
         }});
