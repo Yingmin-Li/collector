@@ -318,18 +318,21 @@ public class DatabaseCounterStorage implements CounterStorage {
     }
 
     /**
-     * This method will delete the set of buffered metrics for the given time
-     * range and namespace
+     * This method will delete the set of buffered metrics for the given set of
+     * ids and any that have the given namespace and null id (This can happen
+     * due to the transition from NING-13355)
+     * @param namespace
      * @param ids
      * @return
      */
     @Override
-    public boolean deleteBufferedMetrics(final Iterable<String> ids){
+    public boolean deleteBufferedMetrics(final String namespace
+            , final Iterable<String> ids){
+
         int deleted = dbi.withHandle(new HandleCallback<Integer>() {
 
         @Override
         public Integer withHandle(Handle handle) throws Exception {
-
 
             PreparedBatch batch = handle.prepareBatch(
                     "delete from metrics_buffer where `id` = :id");
@@ -342,6 +345,17 @@ public class DatabaseCounterStorage implements CounterStorage {
             }
 
             batch.execute();
+
+            // Now delete any from the given namespace that have a null id
+            StringBuilder queryStr = new StringBuilder();
+            queryStr.append("delete from metrics_buffer where "
+                    + "`namespace` = :namespace && `id` is null");
+
+            Update query = handle.createStatement(queryStr.toString())
+                            .bind("namespace", namespace);
+
+            count += query.execute();
+
             return count;
         }});
 

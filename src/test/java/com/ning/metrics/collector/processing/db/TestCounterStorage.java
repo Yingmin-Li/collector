@@ -172,7 +172,7 @@ public class TestCounterStorage
             idList.add(event.getId());
         }
 
-        boolean deleted = counterStorage.deleteBufferedMetrics(idList);
+        boolean deleted = counterStorage.deleteBufferedMetrics("1", idList);
 
         Assert.assertTrue(deleted);
 

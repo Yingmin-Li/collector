@@ -229,7 +229,8 @@ public class RollUpCounterProcessor
             log.info(String.format("Deleting daily counters for %s", namespace));
             // Delete daily metrics which have been accounted for the roll up.
             // There may be more additions done since this process started which is why the evaluation time is passed on.
-            counterStorage.deleteBufferedMetrics(counterEventIdsToDelete);
+            counterStorage.deleteBufferedMetrics(namespace
+                    , counterEventIdsToDelete);
         }
     }
 
