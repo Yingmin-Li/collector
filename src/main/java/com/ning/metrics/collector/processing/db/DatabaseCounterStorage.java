@@ -343,22 +343,26 @@ public class DatabaseCounterStorage implements CounterStorage {
                 if (id == null) {
                     continue;
                 }
-                
+
                 batch.bind("id", id).add();
                 count++;
             }
 
             batch.execute();
 
+            log.info("deleted %d by id", count);
+
             // Now delete any from the given namespace that have a null id
             StringBuilder queryStr = new StringBuilder();
             queryStr.append("delete from metrics_buffer where "
-                    + "`namespace` = :namespace && `id` is null");
+                    + "`namespace` = :namespace and `id` is null");
 
             Update query = handle.createStatement(queryStr.toString())
                             .bind("namespace", namespace);
 
             count += query.execute();
+
+            log.info("deleted %d in total", count);
 
             return count;
         }});
