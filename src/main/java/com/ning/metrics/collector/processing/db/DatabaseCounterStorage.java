@@ -340,6 +340,10 @@ public class DatabaseCounterStorage implements CounterStorage {
             int count = 0;
 
             for(String id : ids) {
+                if (id == null) {
+                    continue;
+                }
+                
                 batch.bind("id", id).add();
                 count++;
             }
