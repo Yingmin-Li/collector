@@ -24,6 +24,7 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Maps;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
@@ -37,13 +38,20 @@ import org.joda.time.format.DateTimeFormatter;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class CounterEventData
 {
+    private final String id;
     private final String uniqueIdentifier;
     private final DateTime createdTime;
     private final Map<String, Integer> counters;
     public static final DateTimeFormatter DAILY_COUNTER_DATE_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd").withZone(DateTimeZone.UTC);
 
+    public CounterEventData(String uniqueIdentifier, DateTime createdTime
+            , Map<String, Integer> counters) {
+        this(null, uniqueIdentifier, createdTime, counters);
+    }
+
     @JsonCreator
-    public CounterEventData(@JsonProperty("uniqueIdentifier") String uniqueIdentifier,
+    public CounterEventData(@JsonProperty("id") String id,
+        @JsonProperty("uniqueIdentifier") String uniqueIdentifier,
         @JsonProperty("createdDate") DateTime createdTime,
         @JsonProperty("counters") Map<String, Integer> counters)
     {
@@ -59,6 +67,8 @@ public class CounterEventData
         {
             this.createdTime = new DateTime(DateTimeZone.UTC);
         }
+
+        this.id = id != null ? id : UUID.randomUUID().toString();
     }
 
     public DateTime getCreatedTime(){
@@ -82,6 +92,10 @@ public class CounterEventData
         {
             incrementCounter(mapEntry.getKey(), mapEntry.getValue());
         }
+    }
+
+    public String getId() {
+        return id;
     }
 
     public String getUniqueIdentifier() {

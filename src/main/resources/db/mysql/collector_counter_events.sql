@@ -19,3 +19,11 @@ CREATE TABLE `metrics_daily` (
   INDEX `metrics_daily_namespace_idx` (`namespace`),
   INDEX `metrics_daily_name_and_date_idx` (`namespace`, `datestamp`))
   ENGINE = INNODB;
+
+ALTER TABLE `metrics_buffer` CHANGE COLUMN `id`
+    `old_id` BIGINT NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `metrics_buffer` ADD COLUMN `id` varchar(36);
+
+ALTER TABLE `metrics_buffer` ADD INDEX `id_idx` (`id`);
+

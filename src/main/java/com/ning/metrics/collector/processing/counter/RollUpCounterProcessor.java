@@ -81,11 +81,14 @@ public class RollUpCounterProcessor
 
             log.info(String.format("Running roll up process for Counter Subscription [%s]", namespace));
 
-            final DateTime toDateTime = new DateTime(DateTimeZone.UTC);
+            DateTime toDateTime = new DateTime(DateTimeZone.UTC);
+            List<String> counterEventIdsToDelete = Lists.newArrayList();
             Map<String, RolledUpCounter> rolledUpCounterMap =
-                    streamAndProcessDailyCounterData(namespace, toDateTime);
+                    streamAndProcessDailyCounterData(namespace
+                            , toDateTime, counterEventIdsToDelete);
 
-            postRollUpProcess(namespace, toDateTime, rolledUpCounterMap);
+            postRollUpProcess(namespace, counterEventIdsToDelete
+                    , rolledUpCounterMap);
 
             log.info(String.format("Roll up process for Counter Subscription [%s] completed successfully!", namespace));
         }
@@ -99,7 +102,8 @@ public class RollUpCounterProcessor
     }
 
     private Map<String, RolledUpCounter> streamAndProcessDailyCounterData(
-            final String namespace, final DateTime toDateTime)
+            final String namespace, final DateTime toDateTime
+            , final List<String> counterEventIdsToDelete)
     {
         return dbi.withHandle(new HandleCallback<Map<String,RolledUpCounter>>() {
 
@@ -115,7 +119,8 @@ public class RollUpCounterProcessor
 
                 query.bind("toDateTime", DatabaseCounterStorage.DAILY_METRICS_DATE_FORMAT.print(toDateTime));
 
-                Map<String,RolledUpCounter> rolledUpCounterMap = new ConcurrentHashMap<String, RolledUpCounter>();
+                Map<String,RolledUpCounter> rolledUpCounterMap
+                        = Maps.newHashMap();
 
                 ResultIterator<CounterEventData> streamingIterator = null;
 
@@ -129,8 +134,10 @@ public class RollUpCounterProcessor
 
                     while(streamingIterator.hasNext())
                     {
-                        processCounterEventData(namespace, rolledUpCounterMap,
-                                streamingIterator.next());
+                        CounterEventData data = streamingIterator.next();
+                        processCounterEventData(namespace
+                                , rolledUpCounterMap, data);
+                        counterEventIdsToDelete.add(data.getId());
                     }
                 }
                 catch (Exception e) {
@@ -161,6 +168,8 @@ public class RollUpCounterProcessor
 
             log.info(String.format("Running roll up process for namespace [%s]", namespace));
 
+            List<String> counterEventIdList = Lists.newArrayList();
+
             while(fetchMoreRecords)
             {
              // Load daily counters stored for the respective subscription limiting to now() and getMaxCounterEventFetchCount
@@ -179,14 +188,18 @@ public class RollUpCounterProcessor
 
                 while(dailyCounterList.hasNext())
                 {
-                    processCounterEventData(namespace, rolledUpCounterMap, dailyCounterList.next());
+                    CounterEventData eventData = dailyCounterList.next();
+                    processCounterEventData(namespace, rolledUpCounterMap
+                            , eventData);
+                    counterEventIdList.add(eventData.getId());
                 }
 
                 log.info(String.format("Roll up completed %s on offset %d", namespace, recordOffSetCounter));
 
             }
 
-            postRollUpProcess(namespace, toDateTime, rolledUpCounterMap);
+            postRollUpProcess(namespace, counterEventIdList
+                    , rolledUpCounterMap);
 
             log.info(String.format("Roll up process for Counter Subscription [%s] completed successfully!", namespace));
         }
@@ -199,8 +212,9 @@ public class RollUpCounterProcessor
 
     }
 
-    private void postRollUpProcess(String namespace, final DateTime toDateTime,
-            Map<String, RolledUpCounter> rolledUpCounterMap)
+    private void postRollUpProcess(String namespace
+            , Iterable<String> counterEventIdsToDelete
+            , Map<String, RolledUpCounter> rolledUpCounterMap)
     {
         if(!rolledUpCounterMap.isEmpty())
         {
@@ -212,10 +226,10 @@ public class RollUpCounterProcessor
                         rolledUpCounter);
             }
 
-            log.info(String.format("Deleting daily counters for %s which are <= %s", namespace, toDateTime));
+            log.info(String.format("Deleting daily counters for %s", namespace));
             // Delete daily metrics which have been accounted for the roll up.
             // There may be more additions done since this process started which is why the evaluation time is passed on.
-            counterStorage.deleteBufferedMetrics(namespace, toDateTime);
+            counterStorage.deleteBufferedMetrics(counterEventIdsToDelete);
         }
     }
 

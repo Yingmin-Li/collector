@@ -35,7 +35,7 @@ public interface CounterStorage
             DateTime toDateTime, Integer limit, Integer offset);
     public List<CounterEventData> loadBufferedMetrics(String namespace,
             DateTime toDateTime);
-    public boolean deleteBufferedMetrics(String namespace, DateTime toDateTime);
+    public boolean deleteBufferedMetrics(Iterable<String> ids);
     public List<String> getNamespacesFromMetricsBuffer();
 
     public String insertOrUpdateDailyRolledUpCounter(RolledUpCounter rolledCounter);

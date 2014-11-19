@@ -156,16 +156,19 @@ public class DatabaseCounterStorage implements CounterStorage {
 
             PreparedBatch batch = handle.prepareBatch(
                     "insert into metrics_buffer "
-                            + "(`namespace`,`metrics`,`timestamp`) values "
-                            + "(:namespace, :metrics, :timestamp)");
+                            + "(`id`,`namespace`,`metrics`,`timestamp`) values "
+                            + "(:id, :namespace, :metrics, :timestamp)");
 
             for(Entry<String, CounterEventData> entry
                     : dailyCounters.entries()) {
 
-                batch.bind("namespace", entry.getKey())
-                        .bind("metrics", mapper.writeValueAsString(entry.getValue()))
+                CounterEventData data = entry.getValue();
+
+                batch.bind("id", data.getId())
+                        .bind("namespace", entry.getKey())
+                        .bind("metrics", mapper.writeValueAsString(data))
                         .bind("timestamp", DAILY_METRICS_DATE_FORMAT.print(
-                                entry.getValue().getCreatedTime()))
+                                data.getCreatedTime()))
                         .add();
             }
 
@@ -210,7 +213,7 @@ public class DatabaseCounterStorage implements CounterStorage {
 
             // Build the query based on the optionals
 
-            queryStr.append("select metrics from metrics_buffer "
+            queryStr.append("select `id`, metrics from metrics_buffer "
                     + "where namespace = :namespace");
 
             queryStr.append(toDateTimeOptional.isPresent()
@@ -317,35 +320,29 @@ public class DatabaseCounterStorage implements CounterStorage {
     /**
      * This method will delete the set of buffered metrics for the given time
      * range and namespace
-     * @param namespace
-     * @param toDateTime
+     * @param ids
      * @return
      */
     @Override
-    public boolean deleteBufferedMetrics(final String namespace,
-            final DateTime toDateTime){
+    public boolean deleteBufferedMetrics(final Iterable<String> ids){
         int deleted = dbi.withHandle(new HandleCallback<Integer>() {
 
         @Override
         public Integer withHandle(Handle handle) throws Exception {
 
-            StringBuilder queryStr = new StringBuilder();
-            queryStr.append("delete from metrics_buffer where "
-                    + "`namespace` = :namespace");
 
-            queryStr.append(Objects.equal(null, toDateTime)
-                    ? "" : " and `timestamp` <= :toDateTime");
+            PreparedBatch batch = handle.prepareBatch(
+                    "delete from metrics_buffer where `id` = :id");
 
-            Update query = handle.createStatement(queryStr.toString())
-                            .bind("namespace", namespace);
+            int count = 0;
 
-            if(!Objects.equal(null, toDateTime))
-            {
-                query.bind("toDateTime",
-                        DAILY_METRICS_DATE_FORMAT.print(toDateTime));
+            for(String id : ids) {
+                batch.bind("id", id).add();
+                count++;
             }
 
-            return query.execute();
+            batch.execute();
+            return count;
         }});
 
         return deleted > 0;
@@ -680,7 +677,8 @@ public class DatabaseCounterStorage implements CounterStorage {
         public CounterEventData map(int index, ResultSet r, StatementContext ctx) throws SQLException
         {
             try {
-                return mapper.readValue(r.getString("metrics"), CounterEventData.class);
+                return mapper.readValue(r.getString("metrics")
+                        , CounterEventData.class);
             }
             catch (IOException e) {
                 throw new UnsupportedOperationException("Error handling not implemented!", e);

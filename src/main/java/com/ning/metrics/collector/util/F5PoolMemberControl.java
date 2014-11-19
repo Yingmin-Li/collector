@@ -30,13 +30,12 @@ import iControl.LocalLBPoolMemberMemberObjectStatus;
 import iControl.LocalLBPoolMemberMemberSessionState;
 import iControl.LocalLBPoolMemberMemberStatisticEntry;
 import iControl.LocalLBPoolMemberMemberStatistics;
+import java.util.ArrayList;
 import org.apache.axis.AxisFault;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.weakref.jmx.Managed;
-
-import java.util.ArrayList;
 
 /**
  * Control the membership to a f5 BIG-IP SLB VIP.
@@ -98,7 +97,9 @@ public class F5PoolMemberControl
     {
         log.info(String.format("Retrieving pool list for %s (username: %s)", hostname, username));
         try {
-            return getInterface(hostname, username, password).getLocalLBPool().get_list();
+            Interfaces result = getInterface(hostname, username, password);
+            result.getLocalLBPool().clearAttachments();
+            return result.getLocalLBPool().get_list();
         }
         catch (AxisFault e) {
             log.warn(String.format("Unable to get pool list: %s", e.getFaultString()));

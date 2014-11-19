@@ -166,7 +166,13 @@ public class TestCounterStorage
         Assert.assertNotNull(dailyList);
         Assert.assertFalse(dailyList.isEmpty());
 
-        boolean deleted = counterStorage.deleteBufferedMetrics("1", dateTime);
+        List<String> idList = Lists.newArrayList();
+
+        for (CounterEventData event : dailyList) {
+            idList.add(event.getId());
+        }
+
+        boolean deleted = counterStorage.deleteBufferedMetrics(idList);
 
         Assert.assertTrue(deleted);
 
